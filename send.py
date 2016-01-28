@@ -1,4 +1,5 @@
-from PyQt4 import QtDBus, QtGui
+#!/usr/bin/python
+from PyQt5 import QtDBus, QtWidgets
 
 class ServerIfc(QtDBus.QDBusAbstractInterface):
 
@@ -15,7 +16,7 @@ class ServerIfc(QtDBus.QDBusAbstractInterface):
 
 if __name__ == '__main__':
   import sys
-  app = QtGui.QApplication(sys.argv)
+  app = QtWidgets.QApplication(sys.argv)
 
 
   server = ServerIfc('cz.base48.Basebar', '/C',

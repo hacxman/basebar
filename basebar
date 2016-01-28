@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sys
-from PyQt4 import QtCore, QtGui, uic, QtDBus, QtSql
+from PyQt5 import QtCore, uic, QtDBus, QtSql, QtWidgets
 
 #import front
 import upcrpc
@@ -12,9 +12,9 @@ def createConnection():
   db = QtSql.QSqlDatabase.addDatabase('QSQLITE')
   db.setDatabaseName(dbname)
   if not db.open():
-    val = QtGui.QMessageBox.critical(None, QtGui.qApp.tr('Cannot open database'),
+    val = QtWidgets.QMessageBox.critical(None, QtWidgets.qApp.tr('Cannot open database'),
         "Cannot open database {}\nCreate new?".format(dbname),
-        QtGui.QMessageBox.Cancel | QtGui.QMessageBox.Ok)
+        QtWidgets.QMessageBox.Cancel | QtWidgets.QMessageBox.Ok)
     return False
 
   if len(db.tables()) == 0:
@@ -66,7 +66,7 @@ class ServerAdaptor(QtDBus.QDBusAbstractAdaptor):
   @QtCore.pyqtSlot(QtDBus.QDBusMessage)
   def newProductCode(self, message):
     code = message.arguments()[0]
-    self.parent().newProd(code.toString())
+    self.parent().newProd(code)
 
 
 
@@ -102,7 +102,7 @@ def get_person_id(name):
   q.bindValue(':name', name)
   r = q.exec_()
   q.next()
-  return q.value(0).toInt()
+  return q.value(0)
 
 def get_product_name(ean):
   q = QtSql.QSqlQuery()
@@ -110,7 +110,8 @@ def get_product_name(ean):
   q.bindValue(':name', ean)
   r = q.exec_()
   q.next()
-  return q.value(0).toString()
+  if q.value(0):
+    return q.value(0)
 
 def get_last_product_stock_date(ean):
   q = QtSql.QSqlQuery()
@@ -118,7 +119,7 @@ def get_last_product_stock_date(ean):
   q.bindValue(':name', ean)
   r = q.exec_()
   q.next()
-  return q.value(0).toString()
+  return q.value(0)
 
 def get_product_price(ean):
   q = QtSql.QSqlQuery()
@@ -126,12 +127,12 @@ def get_product_price(ean):
   q.bindValue(':name', ean)
   r = q.exec_()
   q.next()
-  return q.value(0).toInt()
+  return q.value(0)
 
 def buy_stocked_item(ean, count, debter=None):
   print 'buying', ean, count, debter
   if debter is not None:
-    debterid = get_person_id(debter)[0]
+    debterid = get_person_id(debter)
   else:
     debterid = None
 
@@ -140,7 +141,7 @@ def buy_stocked_item(ean, count, debter=None):
   q.bindValue(':ean', ean)
   r = q.exec_()
   q.next()
-  sid = q.value(0).toInt()[0]
+  sid = q.value(0)
 
   for i in xrange(count):
     q.prepare('insert into buys (stock_id, buydate, payed, person_id) values (:sid, datetime(\'now\'), :payed, :user)')
@@ -153,7 +154,7 @@ def buy_stocked_item(ean, count, debter=None):
       return r, q
   return r, q
 
-class StockOverviewUI(QtGui.QDialog):
+class StockOverviewUI(QtWidgets.QDialog):
   def __init__(self, *args):
     super(StockOverviewUI, self).__init__(*args)
 
@@ -174,12 +175,12 @@ class StockOverviewUI(QtGui.QDialog):
     q.prepare('select sum(stock.price) from buys join stock on buys.stock_id = stock.id where buys.payed = 1')
     q.exec_()
     q.next()
-    self.lblIncome.setText(q.value(0).toString())
+    self.lblIncome.setText(str(q.value(0)))
 
     q.prepare('select sum(stock.price) from buys join stock on buys.stock_id = stock.id where buys.payed != 1')
     q.exec_()
     q.next()
-    self.lblMissing.setText(q.value(0).toString())
+    self.lblMissing.setText(str(q.value(0)))
 
   def load_overview(self):
     q = QtSql.QSqlQuery()
@@ -187,14 +188,14 @@ class StockOverviewUI(QtGui.QDialog):
     q.exec_()
     x, y = 0, 0
     while q.next():
-      ean = q.value(0).toString()
+      ean = q.value(0)
 
       q2 = QtSql.QSqlQuery()
       q2.prepare('select sum(count) from stock where ean = :ean')
       q2.bindValue(':ean', ean)
       r = q2.exec_()
       q2.next()
-      enstocked = q2.value(0).toInt()[0]
+      enstocked = q2.value(0)
       print 'stocked', enstocked
 
 
@@ -202,14 +203,14 @@ class StockOverviewUI(QtGui.QDialog):
       q2.bindValue(':ean', ean)
       r = q2.exec_()
       q2.next()
-      destocked = q2.value(0).toInt()[0]
+      destocked = q2.value(0)
 
       self.tableWidget.insertRow(0)
-      self.tableWidget.setItem(y, 0, QtGui.QTableWidgetItem(ean))
-      self.tableWidget.setItem(y, 1, QtGui.QTableWidgetItem(get_product_name(ean)))
-      self.tableWidget.setItem(y, 2, QtGui.QTableWidgetItem(str(enstocked - destocked)))
-      self.tableWidget.setItem(y, 3, QtGui.QTableWidgetItem(str(get_product_price(ean)[0])))
-      self.tableWidget.setItem(y, 4, QtGui.QTableWidgetItem(get_last_product_stock_date(ean)))
+      self.tableWidget.setItem(y, 0, QtWidgets.QTableWidgetItem(ean))
+      self.tableWidget.setItem(y, 1, QtWidgets.QTableWidgetItem(get_product_name(ean)))
+      self.tableWidget.setItem(y, 2, QtWidgets.QTableWidgetItem(str(enstocked - destocked)))
+      self.tableWidget.setItem(y, 3, QtWidgets.QTableWidgetItem(str(get_product_price(ean))))
+      self.tableWidget.setItem(y, 4, QtWidgets.QTableWidgetItem(get_last_product_stock_date(ean)))
 
   def load_debts(self):
     q = QtSql.QSqlQuery()
@@ -222,18 +223,18 @@ class StockOverviewUI(QtGui.QDialog):
     q.exec_()
     x, y = 0, 0
     while q.next():
-      price = q.value(1).toInt()[0]
-      name  = q.value(2).toString()
-      count = q.value(3).toInt()[0]
+      price = q.value(1)
+      name  = q.value(2)
+      count = q.value(3)
       print name, price, count
       self.twDebts.insertRow(0)
-      self.twDebts.setItem(y, 0, QtGui.QTableWidgetItem(name))
-      self.twDebts.setItem(y, 1, QtGui.QTableWidgetItem(str(price)))
-      self.twDebts.setItem(y, 2, QtGui.QTableWidgetItem(str(count)))
+      self.twDebts.setItem(y, 0, QtWidgets.QTableWidgetItem(name))
+      self.twDebts.setItem(y, 1, QtWidgets.QTableWidgetItem(str(price)))
+      self.twDebts.setItem(y, 2, QtWidgets.QTableWidgetItem(str(count)))
       print price, name, count
 
 
-class SelectUserUI(QtGui.QDialog):
+class SelectUserUI(QtWidgets.QDialog):
   def __init__(self, *args):
     super(SelectUserUI, self).__init__(*args)
 
@@ -246,21 +247,17 @@ class SelectUserUI(QtGui.QDialog):
 
   def load_users(self):
     q = QtSql.QSqlQuery()
-    q.prepare('select name from person')
+    q.prepare('select name from person order by name')
     r = q.exec_()
 
-    model = QtGui.QStandardItemModel(self.listView)
     while q.next():
-      item = QtGui.QStandardItem(q.value(0).toString())
-      model.appendRow(item)
-
-    self.listView.setModel(model)
-    model.sort(0)
+      item = QtWidgets.QListWidgetItem(self.listView)
+      item.setText(q.value(0))
 
   @QtCore.pyqtSlot(QtCore.QModelIndex)
   def on_listView_clicked(self, idx):
-    print 'hahahahahah', idx.data().toString()
-    self.username = idx.data().toString()
+    print 'hahahahahah', idx.data()
+    self.username = idx.data()
 
     ean = self.parentwindow.lblEAN.text()
     buy_stocked_item(ean, self.parentwindow.spnCount.value(), self.username)
@@ -280,7 +277,7 @@ class SelectUserUI(QtGui.QDialog):
     print 'buu'
 
 
-class AddStockUI(QtGui.QDialog):
+class AddStockUI(QtWidgets.QDialog):
   def __init__(self, *args):
     super(AddStockUI, self).__init__(*args)
 
@@ -289,7 +286,7 @@ class AddStockUI(QtGui.QDialog):
   @QtCore.pyqtSlot()
   def on_btnLookup_clicked(self):
     r = upcrpc.lookup(self.txtEAN.text())
-    if r is None:
+    if r is None and ":" in self.txtEAN.text():
       import kaufkauf
       r = kaufkauf.lookup(self.txtEAN.text())
 
@@ -304,19 +301,19 @@ class AddStockUI(QtGui.QDialog):
     if not q.next():
       r, q = add_new_product(ean, prod)
       if not r:
-        QtGui.QMessageBox.critical(None, 'Error',
+        QtWidgets.QMessageBox.critical(None, 'Error',
             "Cannot add new product:{}".format(q.lastError().text()),
-            QtGui.QMessageBox.Cancel)
+            QtWidgets.QMessageBox.Cancel)
         return
 
     r, q = add_new_stock(ean, self.spnPrice.value(), self.spnCount.value())
     if not r:
-      QtGui.QMessageBox.critical(None, 'Error',
+      QtWidgets.QMessageBox.critical(None, 'Error',
             "Cannot add new stock:{}".format(q.lastError().text()),
-            QtGui.QMessageBox.Cancel)
+            QtWidgets.QMessageBox.Cancel)
       return
 
-class UI(QtGui.QMainWindow): #, front.Ui_MainWindow):
+class UI(QtWidgets.QMainWindow): #, front.Ui_MainWindow):
   def __init__(self, *args):
     super(UI, self).__init__(*args)
 
@@ -325,7 +322,7 @@ class UI(QtGui.QMainWindow): #, front.Ui_MainWindow):
 
     self.clear_timer = QtCore.QTimer()
     self.clear_timer.setSingleShot(True)
-    QtCore.QObject.connect(self.clear_timer, QtCore.SIGNAL("timeout()"), self.clear_product)
+    #QtCore.QObject.connect(self.clear_timer, QtCore.SIGNAL("timeout()"), self.clear_product)
 
   def clear_product(self):
     try:
@@ -347,6 +344,8 @@ class UI(QtGui.QMainWindow): #, front.Ui_MainWindow):
     print 'cleared'
 
   def newProd(self, ean):
+    print('Looking up {}'.format(ean))
+
     self.lblEAN.setText(ean)
     self.spnCount.setValue(1)
 
@@ -355,27 +354,27 @@ class UI(QtGui.QMainWindow): #, front.Ui_MainWindow):
     q.bindValue(':ean', ean)
     r = q.exec_()
     if q.next():
-#      print r, q.next(), q.value(0).toString().encode('utf8'), q.value(1).toString().encode('utf8')
-
-      self.lblProd.setText(q.value(1).toString())
+        prod = q.value(1)
+        self.lblProd.setText(prod)
+        print('Found {}'.format(prod))
+    else:
+        print('Not found')
 
     q.prepare('select ean, count, price from stock where ean = :ean order by stockdate desc')
     q.bindValue(':ean', ean)
     r = q.exec_()
-    #print q.next(), q.value(0).toString()
-    if not r:
+    if not q.next():
       print 'never stocked'
       print q.lastError().text()
       self.lblStockedCount.setText('0')
     else:
-      q.next()
-      self.lblPrice.setText(q.value(2).toString())
-      self.unit_price = q.value(2).toInt()[0]
+      self.unit_price = q.value(2)
+      self.lblPrice.setText(str(self.unit_price))
       q.prepare('select sum(count) from stock where ean = :ean')
       q.bindValue(':ean', ean)
       r = q.exec_()
       q.next()
-      enstocked = q.value(0).toInt()[0]
+      enstocked = q.value(0)
       print 'stocked', enstocked
 
 
@@ -383,7 +382,7 @@ class UI(QtGui.QMainWindow): #, front.Ui_MainWindow):
       q.bindValue(':ean', ean)
       r = q.exec_()
       q.next()
-      destocked = q.value(0).toInt()[0]
+      destocked = q.value(0)
       print 'destocked', destocked, q.value(1)
 
       count = enstocked - destocked
@@ -454,7 +453,7 @@ class UI(QtGui.QMainWindow): #, front.Ui_MainWindow):
 
 
 if __name__ == "__main__":
-  app = QtGui.QApplication(sys.argv)
+  app = QtWidgets.QApplication(sys.argv)
 
   createConnection()
 
