@@ -29,3 +29,7 @@ Some example could be:
 echo "xmonad" >> ~/.xinitrc
 echo "basebar" >> ~/.xinitrc
 echo "zbarcam | python /BASEBARPATH/send.py -" >> ~/.xinitrc
+
+Reading barcodes:
+
+./barcode_scanner.py | ./send.py -
